@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+package order;
+
+option go_package = "food-delivery-system/proto/orderpb";
+
+service OrderService {
+  rpc CreateOrder(CreateOrderRequest) returns (OrderResponse);
+  rpc GetOrder(GetOrderRequest) returns (OrderResponse);
+  rpc UpdateOrderStatus(UpdateOrderStatusRequest) returns (OrderResponse);
+  rpc CancelOrder(CancelOrderRequest) returns (OrderResponse);
+  rpc GetOrdersByUser(GetOrdersByUserRequest) returns (OrdersResponse);
+}
+
+message CreateOrderRequest {
+  string user_id = 1;
+  string restaurant_id = 2;
+  repeated string item_ids = 3;
+  int64 total_price = 4;
+}
+
+message GetOrderRequest {
+  string order_id = 1;
+}
+
+message UpdateOrderStatusRequest {
+  string order_id = 1;
+  string status = 2;
+}
+
+message CancelOrderRequest {
+  string order_id = 1;
+}
+
+message GetOrdersByUserRequest {
+  string user_id = 1;
+}
+
+message OrderResponse {
+  string order_id = 1;
+  string user_id = 2;
+  string restaurant_id = 3;
+  int64 total_price = 4;
+  string status = 5;
+}
+
+message OrdersResponse {
+  repeated OrderResponse orders = 1;
+}
