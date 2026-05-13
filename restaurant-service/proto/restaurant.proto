@@ -1,0 +1,214 @@
+syntax = "proto3";
+
+package restaurant.v1;
+
+option go_package = "github.com/aitu/food-delivery/restaurant-service/internal/infrastructure/grpc/restaurantpb;restaurantpb";
+
+import "google/protobuf/timestamp.proto";
+
+service RestaurantService {
+  rpc CreateRestaurant(CreateRestaurantRequest) returns (RestaurantResponse);
+  rpc GetRestaurantById(GetRestaurantByIdRequest) returns (RestaurantResponse);
+  rpc UpdateRestaurant(UpdateRestaurantRequest) returns (RestaurantResponse);
+  rpc DeleteRestaurant(DeleteRestaurantRequest) returns (DeleteResponse);
+  rpc ListRestaurants(ListRestaurantsRequest) returns (ListRestaurantsResponse);
+  rpc SearchRestaurants(SearchRestaurantsRequest) returns (ListRestaurantsResponse);
+  rpc GetTopRatedRestaurants(TopRatedRestaurantsRequest) returns (ListRestaurantsResponse);
+
+  rpc CreateCategory(CreateCategoryRequest) returns (CategoryResponse);
+  rpc UpdateCategory(UpdateCategoryRequest) returns (CategoryResponse);
+  rpc DeleteCategory(DeleteCategoryRequest) returns (DeleteResponse);
+  rpc ListCategories(ListCategoriesRequest) returns (ListCategoriesResponse);
+
+  rpc CreateMenuItem(CreateMenuItemRequest) returns (MenuItemResponse);
+  rpc UpdateMenuItem(UpdateMenuItemRequest) returns (MenuItemResponse);
+  rpc DeleteMenuItem(DeleteMenuItemRequest) returns (DeleteResponse);
+  rpc GetMenuByRestaurant(GetMenuByRestaurantRequest) returns (MenuResponse);
+  rpc SetMenuItemAvailability(SetMenuItemAvailabilityRequest) returns (MenuItemResponse);
+
+  rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+}
+
+message Pagination {
+  int32 page = 1;
+  int32 page_size = 2;
+}
+
+message PageMeta {
+  int32 page = 1;
+  int32 page_size = 2;
+  int64 total = 3;
+}
+
+message Restaurant {
+  string id = 1;
+  string owner_id = 2;
+  string name = 3;
+  string description = 4;
+  string cuisine_type = 5;
+  string address = 6;
+  string city = 7;
+  double rating = 8;
+  int32 total_reviews = 9;
+  string image_url = 10;
+  bool is_open = 11;
+  google.protobuf.Timestamp created_at = 12;
+  google.protobuf.Timestamp updated_at = 13;
+}
+
+message Category {
+  string id = 1;
+  string restaurant_id = 2;
+  string name = 3;
+  google.protobuf.Timestamp created_at = 4;
+}
+
+message MenuItem {
+  string id = 1;
+  string category_id = 2;
+  string restaurant_id = 3;
+  string name = 4;
+  string description = 5;
+  double price = 6;
+  string image_url = 7;
+  bool is_available = 8;
+  google.protobuf.Timestamp created_at = 9;
+  google.protobuf.Timestamp updated_at = 10;
+}
+
+message MenuCategory {
+  Category category = 1;
+  repeated MenuItem items = 2;
+}
+
+message RestaurantFilter {
+  string query = 1;
+  string cuisine_type = 2;
+  string city = 3;
+  optional bool open_only = 4;
+  string sort_by = 5;
+  string sort_direction = 6;
+}
+
+message CreateRestaurantRequest {
+  string owner_id = 1;
+  string name = 2;
+  string description = 3;
+  string cuisine_type = 4;
+  string address = 5;
+  string city = 6;
+  string image_url = 7;
+  bool is_open = 8;
+}
+
+message GetRestaurantByIdRequest { string id = 1; }
+
+message UpdateRestaurantRequest {
+  string id = 1;
+  string owner_id = 2;
+  string name = 3;
+  string description = 4;
+  string cuisine_type = 5;
+  string address = 6;
+  string city = 7;
+  string image_url = 8;
+  bool is_open = 9;
+}
+
+message DeleteRestaurantRequest {
+  string id = 1;
+  string owner_id = 2;
+}
+
+message ListRestaurantsRequest {
+  Pagination pagination = 1;
+  RestaurantFilter filter = 2;
+}
+
+message SearchRestaurantsRequest {
+  string query = 1;
+  Pagination pagination = 2;
+  RestaurantFilter filter = 3;
+}
+
+message TopRatedRestaurantsRequest {
+  string city = 1;
+  int32 limit = 2;
+}
+
+message RestaurantResponse { Restaurant restaurant = 1; }
+
+message ListRestaurantsResponse {
+  repeated Restaurant restaurants = 1;
+  PageMeta meta = 2;
+}
+
+message CreateCategoryRequest {
+  string restaurant_id = 1;
+  string owner_id = 2;
+  string name = 3;
+}
+
+message UpdateCategoryRequest {
+  string id = 1;
+  string owner_id = 2;
+  string name = 3;
+}
+
+message DeleteCategoryRequest {
+  string id = 1;
+  string owner_id = 2;
+}
+
+message ListCategoriesRequest { string restaurant_id = 1; }
+message CategoryResponse { Category category = 1; }
+message ListCategoriesResponse { repeated Category categories = 1; }
+
+message CreateMenuItemRequest {
+  string restaurant_id = 1;
+  string category_id = 2;
+  string owner_id = 3;
+  string name = 4;
+  string description = 5;
+  double price = 6;
+  string image_url = 7;
+  bool is_available = 8;
+}
+
+message UpdateMenuItemRequest {
+  string id = 1;
+  string owner_id = 2;
+  string category_id = 3;
+  string name = 4;
+  string description = 5;
+  double price = 6;
+  string image_url = 7;
+  bool is_available = 8;
+}
+
+message DeleteMenuItemRequest {
+  string id = 1;
+  string owner_id = 2;
+}
+
+message GetMenuByRestaurantRequest { string restaurant_id = 1; }
+
+message SetMenuItemAvailabilityRequest {
+  string id = 1;
+  string owner_id = 2;
+  bool is_available = 3;
+}
+
+message MenuItemResponse { MenuItem item = 1; }
+message MenuResponse { repeated MenuCategory categories = 1; }
+
+message DeleteResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message HealthCheckRequest {}
+message HealthCheckResponse {
+  string status = 1;
+  string service = 2;
+}
