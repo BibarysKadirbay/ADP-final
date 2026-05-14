@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package user;
+
+option go_package = "user-service/internal/infrastructure/grpc/userpb";
+
+service UserService {
+  rpc CreateUser(CreateUserRequest) returns (UserResponse);
+  rpc GetUser(GetUserRequest) returns (UserResponse);
+  rpc ListUsers(Empty) returns (UsersResponse);
+}
+
+message Empty {}
+
+message CreateUserRequest {
+  string name = 1;
+  string email = 2;
+  string phone = 3;
+  string address = 4;
+}
+
+message GetUserRequest {
+  string user_id = 1;
+}
+
+message UserResponse {
+  string user_id = 1;
+  string name = 2;
+  string email = 3;
+  string phone = 4;
+  string address = 5;
+}
+
+message UsersResponse {
+  repeated UserResponse users = 1;
+}

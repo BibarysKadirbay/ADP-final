@@ -1,32 +1,71 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net"
 
-	"user-service/internal/database"
-	"user-service/internal/repository"
-	"user-service/internal/service"
-
-	userpb "food-delivery-system/proto/userpb"
+	"user-service/internal/config"
+	"user-service/internal/infrastructure/database"
+	pb "user-service/internal/infrastructure/grpc/userpb"
+	appmetrics "user-service/internal/infrastructure/metrics"
+	"user-service/internal/middleware"
+	grpcTransport "user-service/internal/transport/grpc"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
 )
 
 func main() {
-	db := database.Connect()
-	repo := repository.NewUserRepository(db)
-	userService := service.NewUserService(repo)
 
-	lis, err := net.Listen("tcp", ":50051")
+	ctx := context.Background()
+
+	cfg, err := config.Load()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	grpcServer := grpc.NewServer()
-	userpb.RegisterUserServiceServer(grpcServer, userService)
+	db, err := database.NewPostgresPool(
+		ctx,
+		cfg.PostgresDSN,
+	)
 
-	log.Println("User Service is running on port 50051")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer db.Close()
+
+	repo := database.NewUserRepository(db)
+
+	m := appmetrics.New(cfg.ServiceName)
+
+	lis, err := net.Listen(
+		"tcp",
+		":"+cfg.GRPCPort,
+	)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	grpcServer := grpc.NewServer(
+		grpc.ChainUnaryInterceptor(
+			middleware.RequestIDUnaryInterceptor(),
+			middleware.MetricsUnaryInterceptor(m),
+		),
+	)
+
+	pb.RegisterUserServiceServer(
+		grpcServer,
+		grpcTransport.NewUserServer(repo, nil),
+	)
+
+	reflection.Register(grpcServer)
+
+	log.Println(
+		"user-service gRPC started on :" + cfg.GRPCPort,
+	)
 
 	if err := grpcServer.Serve(lis); err != nil {
 		log.Fatal(err)
