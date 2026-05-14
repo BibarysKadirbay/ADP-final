@@ -1,0 +1,49 @@
+services:
+  restaurant-service:
+    build: .
+    container_name: restaurant-service
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      nats:
+        condition: service_started
+    ports:
+      - "50055:50055"
+      - "9105:9105"
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: restaurant-postgres
+    environment:
+      POSTGRES_DB: restaurant_service
+      POSTGRES_USER: restaurant
+      POSTGRES_PASSWORD: restaurant
+    ports:
+      - "5435:5432"
+    volumes:
+      - restaurant_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U restaurant -d restaurant_service"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    container_name: restaurant-redis
+    ports:
+      - "6385:6379"
+
+  nats:
+    image: nats:2.10-alpine
+    container_name: restaurant-nats
+    command: ["-js", "-m", "8222"]
+    ports:
+      - "4225:4222"
+      - "8225:8222"
+
+volumes:
+  restaurant_pg:

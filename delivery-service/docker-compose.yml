@@ -1,0 +1,49 @@
+services:
+  delivery-service:
+    build: .
+    container_name: delivery-service
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      nats:
+        condition: service_started
+    ports:
+      - "50056:50056"
+      - "9106:9106"
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: delivery-postgres
+    environment:
+      POSTGRES_DB: delivery_service
+      POSTGRES_USER: delivery
+      POSTGRES_PASSWORD: delivery
+    ports:
+      - "5436:5432"
+    volumes:
+      - delivery_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U delivery -d delivery_service"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    container_name: delivery-redis
+    ports:
+      - "6386:6379"
+
+  nats:
+    image: nats:2.10-alpine
+    container_name: delivery-nats
+    command: ["-js", "-m", "8222"]
+    ports:
+      - "4226:4222"
+      - "8226:8222"
+
+volumes:
+  delivery_pg:
