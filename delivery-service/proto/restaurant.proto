@@ -1,0 +1,43 @@
+syntax = "proto3";
+
+package restaurant.v1;
+
+option go_package = "github.com/aitu/food-delivery/delivery-service/internal/infrastructure/grpc/restaurantpb;restaurantpb";
+
+import "google/protobuf/timestamp.proto";
+
+service RestaurantService {
+  rpc GetRestaurantById(GetRestaurantByIdRequest) returns (RestaurantResponse);
+  rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+}
+
+message Restaurant {
+  string id = 1;
+  string owner_id = 2;
+  string name = 3;
+  string description = 4;
+  string cuisine_type = 5;
+  string address = 6;
+  string city = 7;
+  double rating = 8;
+  int32 total_reviews = 9;
+  string image_url = 10;
+  bool is_open = 11;
+  google.protobuf.Timestamp created_at = 12;
+  google.protobuf.Timestamp updated_at = 13;
+}
+
+message GetRestaurantByIdRequest {
+  string id = 1;
+}
+
+message RestaurantResponse {
+  Restaurant restaurant = 1;
+}
+
+message HealthCheckRequest {}
+
+message HealthCheckResponse {
+  string status = 1;
+  string service = 2;
+}

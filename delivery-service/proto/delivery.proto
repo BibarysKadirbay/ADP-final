@@ -1,0 +1,206 @@
+syntax = "proto3";
+
+package delivery.v1;
+
+option go_package = "github.com/aitu/food-delivery/delivery-service/internal/infrastructure/grpc/deliverypb;deliverypb";
+
+import "google/protobuf/timestamp.proto";
+
+service DeliveryService {
+  rpc AssignDelivery(AssignDeliveryRequest) returns (DeliveryResponse);
+  rpc GetDeliveryById(GetDeliveryByIdRequest) returns (DeliveryResponse);
+  rpc UpdateDeliveryStatus(UpdateDeliveryStatusRequest) returns (DeliveryResponse);
+  rpc GetDeliveriesByCourier(GetDeliveriesByCourierRequest) returns (ListDeliveriesResponse);
+  rpc GetDeliveriesByOrder(GetDeliveriesByOrderRequest) returns (ListDeliveriesResponse);
+  rpc ListAvailableCouriers(ListAvailableCouriersRequest) returns (ListCouriersResponse);
+  rpc GetDeliveryStats(GetDeliveryStatsRequest) returns (DeliveryStatsResponse);
+  rpc CalculateDeliveryETA(CalculateDeliveryETARequest) returns (DeliveryETAResponse);
+  rpc GetDeliveryHistory(GetDeliveryHistoryRequest) returns (DeliveryHistoryResponse);
+  rpc RateCourier(RateCourierRequest) returns (CourierRatingResponse);
+  rpc RegisterCourier(RegisterCourierRequest) returns (CourierResponse);
+  rpc UpdateCourierAvailability(UpdateCourierAvailabilityRequest) returns (CourierResponse);
+  rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+}
+
+message Pagination {
+  int32 page = 1;
+  int32 page_size = 2;
+}
+
+message PageMeta {
+  int32 page = 1;
+  int32 page_size = 2;
+  int64 total = 3;
+}
+
+message Courier {
+  string id = 1;
+  string user_id = 2;
+  string full_name = 3;
+  string phone = 4;
+  string vehicle_type = 5;
+  double rating = 6;
+  int32 total_deliveries = 7;
+  bool is_available = 8;
+  google.protobuf.Timestamp created_at = 9;
+  google.protobuf.Timestamp updated_at = 10;
+}
+
+message Delivery {
+  string id = 1;
+  string order_id = 2;
+  string courier_id = 3;
+  string restaurant_id = 4;
+  string customer_id = 5;
+  string status = 6;
+  string pickup_address = 7;
+  string delivery_address = 8;
+  int32 estimated_eta_minutes = 9;
+  google.protobuf.Timestamp pickup_time = 10;
+  google.protobuf.Timestamp delivered_time = 11;
+  double route_distance_km = 12;
+  google.protobuf.Timestamp created_at = 13;
+  google.protobuf.Timestamp updated_at = 14;
+}
+
+message DeliveryStatusHistory {
+  string id = 1;
+  string delivery_id = 2;
+  string old_status = 3;
+  string new_status = 4;
+  google.protobuf.Timestamp changed_at = 5;
+}
+
+message CourierRating {
+  string id = 1;
+  string courier_id = 2;
+  string order_id = 3;
+  string customer_id = 4;
+  int32 rating = 5;
+  string comment = 6;
+  google.protobuf.Timestamp created_at = 7;
+}
+
+message DeliveryStats {
+  int64 total_deliveries = 1;
+  int64 active_deliveries = 2;
+  int64 completed_deliveries = 3;
+  int64 cancelled_deliveries = 4;
+  double average_eta_minutes = 5;
+  double average_distance_km = 6;
+}
+
+message DeliveryFilter {
+  string status = 1;
+  string sort_by = 2;
+  string sort_direction = 3;
+}
+
+message AssignDeliveryRequest {
+  string order_id = 1;
+  string restaurant_id = 2;
+  string customer_id = 3;
+  string pickup_address = 4;
+  string delivery_address = 5;
+  double route_distance_km = 6;
+}
+
+message GetDeliveryByIdRequest {
+  string id = 1;
+}
+
+message UpdateDeliveryStatusRequest {
+  string id = 1;
+  string status = 2;
+}
+
+message GetDeliveriesByCourierRequest {
+  string courier_id = 1;
+  DeliveryFilter filter = 2;
+  Pagination pagination = 3;
+}
+
+message GetDeliveriesByOrderRequest {
+  string order_id = 1;
+}
+
+message ListAvailableCouriersRequest {
+  string vehicle_type = 1;
+  Pagination pagination = 2;
+}
+
+message GetDeliveryStatsRequest {
+  string courier_id = 1;
+}
+
+message CalculateDeliveryETARequest {
+  string delivery_id = 1;
+  double route_distance_km = 2;
+  string status = 3;
+}
+
+message GetDeliveryHistoryRequest {
+  string delivery_id = 1;
+}
+
+message RateCourierRequest {
+  string courier_id = 1;
+  string order_id = 2;
+  string customer_id = 3;
+  int32 rating = 4;
+  string comment = 5;
+}
+
+message RegisterCourierRequest {
+  string user_id = 1;
+  string full_name = 2;
+  string phone = 3;
+  string vehicle_type = 4;
+}
+
+message UpdateCourierAvailabilityRequest {
+  string courier_id = 1;
+  bool is_available = 2;
+}
+
+message DeliveryResponse {
+  Delivery delivery = 1;
+}
+
+message ListDeliveriesResponse {
+  repeated Delivery deliveries = 1;
+  PageMeta meta = 2;
+}
+
+message ListCouriersResponse {
+  repeated Courier couriers = 1;
+  PageMeta meta = 2;
+}
+
+message DeliveryStatsResponse {
+  DeliveryStats stats = 1;
+}
+
+message DeliveryETAResponse {
+  int32 eta_minutes = 1;
+  double route_distance_km = 2;
+}
+
+message DeliveryHistoryResponse {
+  repeated DeliveryStatusHistory history = 1;
+}
+
+message CourierRatingResponse {
+  CourierRating rating = 1;
+}
+
+message CourierResponse {
+  Courier courier = 1;
+}
+
+message HealthCheckRequest {}
+
+message HealthCheckResponse {
+  string status = 1;
+  string service = 2;
+}
