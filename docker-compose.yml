@@ -53,3 +53,20 @@ services:
     container_name: grafana
     ports:
       - "3000:3000"
+  order-db:
+    image: postgres:16
+    container_name: order-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: orderdb
+    ports:
+      - "5434:5432"
+  order-service:
+    build: ./order-service
+    container_name: order-service
+    depends_on:
+      - order-db
+      - nats
+    ports:
+      - "50052:50052"
