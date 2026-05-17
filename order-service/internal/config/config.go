@@ -73,7 +73,7 @@ func Load() (*Config, error) {
 	// Database
 	v.SetDefault(
 		"POSTGRES_DSN",
-		"postgres://postgres:0000@localhost:5432/orderdb?sslmode=disable",
+		"postgres://postgres:0000@localhost:5433/orderdb?sslmode=disable",
 	)
 
 	// Redis

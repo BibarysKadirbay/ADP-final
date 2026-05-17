@@ -26,6 +26,7 @@ import (
 	otelgrpc "go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
 )
 
 func main() {
@@ -106,7 +107,7 @@ func main() {
 		),
 	)
 	deliverypb.RegisterDeliveryServiceServer(grpcServer, transportgrpc.NewServer(uc, cfg.ServiceName))
-
+	reflection.Register(grpcServer)
 	metricsServer := &http.Server{
 		Addr:              ":" + cfg.MetricsPort,
 		Handler:           m.Handler(),

@@ -34,6 +34,11 @@ func NewSubscriber(cfg config.NATSConfig, uc *usecase.DeliveryUsecase, log *zap.
 		Subjects: []string{"order.*"},
 		Storage:  nats.FileStorage,
 	})
+	_, _ = js.AddStream(&nats.StreamConfig{
+		Name:     "PAYMENT_EVENTS",
+		Subjects: []string{"payment.*"},
+		Storage:  nats.FileStorage,
+	})
 	s := &Subscriber{conn: conn, js: js, log: log}
 	if err := s.subscribe(uc); err != nil {
 		s.Close()
@@ -43,21 +48,21 @@ func NewSubscriber(cfg config.NATSConfig, uc *usecase.DeliveryUsecase, log *zap.
 }
 
 func (s *Subscriber) subscribe(uc *usecase.DeliveryUsecase) error {
-	confirmed, err := s.js.QueueSubscribe("order.confirmed", "delivery-service", func(msg *nats.Msg) {
-		var event usecase.OrderConfirmedEvent
+	confirmed, err := s.js.QueueSubscribe("payment.completed", "delivery-service", func(msg *nats.Msg) {
+		var event usecase.PaymentCompletedEvent
 		if err := json.Unmarshal(msg.Data, &event); err != nil {
 			_ = msg.Nak()
 			return
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		if err := uc.HandleOrderConfirmed(ctx, event); err != nil {
-			s.log.Warn("order.confirmed handling failed", zap.Error(err))
+		if err := uc.HandlePaymentCompleted(ctx, event); err != nil {
+			s.log.Warn("payment.completed handling failed", zap.Error(err))
 			_ = msg.Nak()
 			return
 		}
 		_ = msg.Ack()
-	}, nats.Durable("delivery-order-confirmed"), nats.ManualAck())
+	}, nats.Durable("delivery-payment-completed"), nats.ManualAck())
 	if err != nil {
 		return err
 	}

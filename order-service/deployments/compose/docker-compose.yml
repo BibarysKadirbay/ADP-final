@@ -4,10 +4,12 @@ services:
     image: postgres:15
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: 0000
+      POSTGRES_PASSWORD: "0000"
       POSTGRES_DB: orderdb
     ports:
       - "5432:5432"
+    volumes:
+      - ../../migrations/000001_init.up.sql:/docker-entrypoint-initdb.d/001_init.sql:ro
 
   redis:
     image: redis:7

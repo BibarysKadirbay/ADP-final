@@ -41,6 +41,10 @@ func Load() (*Config, error) {
 	v.SetDefault("SERVICE_NAME", "restaurant-service")
 	v.SetDefault("GRPC_PORT", "50055")
 	v.SetDefault("METRICS_PORT", "9105")
+	v.SetDefault(
+		"POSTGRES_DSN",
+		"postgres://restaurant:restaurant@restaurant-db:5432/restaurant_service?sslmode=disable",
+	)
 	v.SetDefault("CACHE_TTL", "5m")
 	v.SetDefault("REDIS_ADDR", "localhost:6379")
 	v.SetDefault("NATS_URL", "nats://localhost:4222")

@@ -5,16 +5,44 @@ package user;
 option go_package = "user-service/internal/infrastructure/grpc/userpb";
 
 service UserService {
+  rpc RegisterUser(RegisterUserRequest) returns (AuthResponse);
+  rpc LoginUser(LoginUserRequest) returns (AuthResponse);
   rpc CreateUser(CreateUserRequest) returns (UserResponse);
   rpc GetUser(GetUserRequest) returns (UserResponse);
+  rpc UpdateUserProfile(UpdateUserProfileRequest) returns (UserResponse);
   rpc ListUsers(Empty) returns (UsersResponse);
 }
 
 message Empty {}
 
+message RegisterUserRequest {
+  string name = 1;
+  string email = 2;
+  string password = 3;
+  string phone = 4;
+  string address = 5;
+}
+
+message LoginUserRequest {
+  string email = 1;
+  string password = 2;
+}
+
+message AuthResponse {
+  string token = 1;
+  UserResponse user = 2;
+}
+
 message CreateUserRequest {
   string name = 1;
   string email = 2;
+  string phone = 3;
+  string address = 4;
+}
+
+message UpdateUserProfileRequest {
+  string user_id = 1;
+  string name = 2;
   string phone = 3;
   string address = 4;
 }

@@ -250,6 +250,33 @@ func (u *DeliveryUsecase) HandleOrderConfirmed(ctx context.Context, event OrderC
 	return err
 }
 
+type PaymentCompletedEvent struct {
+	OrderID         string `json:"order_id"`
+	RestaurantID    string `json:"restaurant_id"`
+	UserID          string `json:"user_id"`
+	DeliveryAddress string `json:"delivery_address"`
+	Amount          int64  `json:"amount"`
+}
+
+func (u *DeliveryUsecase) HandlePaymentCompleted(ctx context.Context, event PaymentCompletedEvent) error {
+	orderID, err := uuid.Parse(event.OrderID)
+	if err != nil {
+		return err
+	}
+	restaurantID, err := uuid.Parse(event.RestaurantID)
+	if err != nil {
+		restaurantID = uuid.Nil
+	}
+	customerID, err := uuid.Parse(event.UserID)
+	if err != nil {
+		return err
+	}
+	return u.HandleOrderConfirmed(ctx, OrderConfirmedEvent{
+		OrderID: orderID, RestaurantID: restaurantID, CustomerID: customerID,
+		PickupAddress: "Restaurant pickup", DeliveryAddress: event.DeliveryAddress, RouteDistanceKM: 3.5,
+	})
+}
+
 func (u *DeliveryUsecase) HandleOrderCancelled(ctx context.Context, orderID uuid.UUID) error {
 	d, err := u.deliveries.CancelByOrder(ctx, orderID)
 	if err != nil {

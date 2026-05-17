@@ -1,0 +1,45 @@
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, sans-serif;
+  background: #f4f6f8;
+  color: #1a1a1a;
+}
+a { color: #1677ff; text-decoration: none; }
+nav {
+  background: #fff;
+  padding: 1rem 2rem;
+  display: flex;
+  gap: 1.5rem;
+  align-items: center;
+  box-shadow: 0 1px 4px rgba(0,0,0,.08);
+}
+nav a { font-weight: 500; }
+.container { max-width: 900px; margin: 2rem auto; padding: 0 1rem; }
+.card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 16px rgba(0,0,0,.06);
+  margin-bottom: 1rem;
+}
+input, button, select {
+  width: 100%;
+  padding: 10px 12px;
+  margin-top: 8px;
+  border-radius: 8px;
+  border: 1px solid #d9d9d9;
+  font-size: 1rem;
+}
+button {
+  background: #1677ff;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+}
+button:hover { background: #0958d9; }
+button.secondary { background: #f0f0f0; color: #333; }
+label { display: block; margin-top: 12px; font-size: 0.9rem; color: #555; }
+.error { color: #cf1322; margin-top: 8px; }
+.grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }

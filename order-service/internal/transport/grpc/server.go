@@ -2,148 +2,77 @@ package grpc
 
 import (
 	"context"
-	"encoding/json"
-	"log"
-	"time"
 
 	"order-service/internal/domain/entities"
 	"order-service/internal/domain/services"
-	"order-service/internal/infrastructure/database"
-
 	orderpb "order-service/internal/infrastructure/grpc/orderpb"
+	"order-service/internal/usecase"
 
-	"github.com/google/uuid"
-	"github.com/nats-io/nats.go"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type OrderServer struct {
 	orderpb.UnimplementedOrderServiceServer
-	repo *database.OrderRepository
-	nc   *nats.Conn
+	uc *usecase.OrderUsecase
 }
 
-func NewOrderServer(
-	repo *database.OrderRepository,
-	nc *nats.Conn,
-) *OrderServer {
-	return &OrderServer{
-		repo: repo,
-		nc:   nc,
-	}
+func NewOrderServer(uc *usecase.OrderUsecase) *OrderServer {
+	return &OrderServer{uc: uc}
 }
 
-func (s *OrderServer) CreateOrder(
-	ctx context.Context,
-	req *orderpb.CreateOrderRequest,
-) (*orderpb.OrderResponse, error) {
-
-	order := &entities.Order{
-		ID:            uuid.NewString(),
-		UserID:        req.UserId,
-		RestaurantID:  req.RestaurantId,
-		DeliveryID:    "",
-		TotalPrice:    req.TotalPrice,
-		Status:        services.OrderPending,
-		PaymentStatus: services.PaymentPending,
-		Address:       req.Address,
-		Comment:       req.Comment,
-		CreatedAt:     time.Now(),
+func (s *OrderServer) CreateOrder(ctx context.Context, req *orderpb.CreateOrderRequest) (*orderpb.OrderResponse, error) {
+	order, err := s.uc.CreateOrder(ctx, req.UserId, req.RestaurantId, req.TotalPrice, req.Address, req.Comment, req.UserEmail)
+	if err != nil {
+		return nil, toStatus(err)
 	}
-
-	if err := s.repo.Create(ctx, order); err != nil {
-		return nil, err
-	}
-
-	event := map[string]interface{}{
-		"order_id":      order.ID,
-		"user_id":       order.UserID,
-		"restaurant_id": order.RestaurantID,
-		"amount":        order.TotalPrice,
-		"status":        order.Status,
-	}
-
-	data, err := json.Marshal(event)
-	if err == nil && s.nc != nil {
-		if err := s.nc.Publish("order.created", data); err != nil {
-			log.Println("failed to publish order.created:", err)
-		}
-	}
-
-	return mapOrderToResponse(order), nil
+	return mapOrder(order), nil
 }
 
-func (s *OrderServer) GetOrder(
-	ctx context.Context,
-	req *orderpb.GetOrderRequest,
-) (*orderpb.OrderResponse, error) {
+func (s *OrderServer) GetOrder(ctx context.Context, req *orderpb.GetOrderRequest) (*orderpb.OrderResponse, error) {
+	order, err := s.uc.GetOrder(ctx, req.OrderId)
+	if err != nil {
+		return nil, toStatus(err)
+	}
+	return mapOrder(order), nil
+}
 
-	order, err := s.repo.GetByID(ctx, req.OrderId)
+func (s *OrderServer) UpdateOrderStatus(ctx context.Context, req *orderpb.UpdateOrderStatusRequest) (*orderpb.OrderResponse, error) {
+	if err := s.uc.UpdateOrderStatus(ctx, req.OrderId, req.Status); err != nil {
+		return nil, toStatus(err)
+	}
+	order, err := s.uc.GetOrder(ctx, req.OrderId)
+	if err != nil {
+		return nil, toStatus(err)
+	}
+	return mapOrder(order), nil
+}
+
+func (s *OrderServer) CancelOrder(ctx context.Context, req *orderpb.CancelOrderRequest) (*orderpb.OrderResponse, error) {
+	if err := s.uc.CancelOrder(ctx, req.OrderId); err != nil {
+		return nil, toStatus(err)
+	}
+	order, err := s.uc.GetOrder(ctx, req.OrderId)
+	if err != nil {
+		return nil, toStatus(err)
+	}
+	return mapOrder(order), nil
+}
+
+func (s *OrderServer) GetOrdersByUser(ctx context.Context, req *orderpb.GetOrdersByUserRequest) (*orderpb.OrdersResponse, error) {
+	orders, err := s.uc.ListOrdersByUser(ctx, req.UserId)
 	if err != nil {
 		return nil, err
 	}
-
-	return mapOrderToResponse(order), nil
+	result := make([]*orderpb.OrderResponse, 0, len(orders))
+	for _, o := range orders {
+		order := o
+		result = append(result, mapOrder(&order))
+	}
+	return &orderpb.OrdersResponse{Orders: result}, nil
 }
 
-func (s *OrderServer) UpdateOrderStatus(
-	ctx context.Context,
-	req *orderpb.UpdateOrderStatusRequest,
-) (*orderpb.OrderResponse, error) {
-
-	if err := s.repo.UpdateStatus(ctx, req.OrderId, req.Status); err != nil {
-		return nil, err
-	}
-
-	order, err := s.repo.GetByID(ctx, req.OrderId)
-	if err != nil {
-		return nil, err
-	}
-
-	return mapOrderToResponse(order), nil
-}
-
-func (s *OrderServer) CancelOrder(
-	ctx context.Context,
-	req *orderpb.CancelOrderRequest,
-) (*orderpb.OrderResponse, error) {
-
-	if err := s.repo.UpdateStatus(ctx, req.OrderId, services.OrderCancelled); err != nil {
-		return nil, err
-	}
-
-	order, err := s.repo.GetByID(ctx, req.OrderId)
-	if err != nil {
-		return nil, err
-	}
-
-	return mapOrderToResponse(order), nil
-}
-
-func (s *OrderServer) GetOrdersByUser(
-	ctx context.Context,
-	req *orderpb.GetOrdersByUserRequest,
-) (*orderpb.OrdersResponse, error) {
-
-	orders, err := s.repo.List(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	var result []*orderpb.OrderResponse
-
-	for _, order := range orders {
-		if order.UserID == req.UserId {
-			o := order
-			result = append(result, mapOrderToResponse(&o))
-		}
-	}
-
-	return &orderpb.OrdersResponse{
-		Orders: result,
-	}, nil
-}
-
-func mapOrderToResponse(order *entities.Order) *orderpb.OrderResponse {
+func mapOrder(order *entities.Order) *orderpb.OrderResponse {
 	return &orderpb.OrderResponse{
 		OrderId:       order.ID,
 		UserId:        order.UserID,
@@ -155,4 +84,11 @@ func mapOrderToResponse(order *entities.Order) *orderpb.OrderResponse {
 		Address:       order.Address,
 		Comment:       order.Comment,
 	}
+}
+
+func toStatus(err error) error {
+	if err == services.ErrOrderNotFound {
+		return status.Error(codes.NotFound, err.Error())
+	}
+	return status.Error(codes.Internal, err.Error())
 }

@@ -1,46 +1,78 @@
 services:
-  delivery-service:
-    build: .
-    container_name: delivery-service
-    env_file: .env
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_started
-      nats:
-        condition: service_started
-    ports:
-      - "50056:50056"
-      - "9106:9106"
 
-  postgres:
+  delivery-db:
     image: postgres:16-alpine
     container_name: delivery-postgres
+
     environment:
       POSTGRES_DB: delivery_service
       POSTGRES_USER: delivery
       POSTGRES_PASSWORD: delivery
+
     ports:
       - "5436:5432"
+
     volumes:
       - delivery_pg:/var/lib/postgresql/data
+      - ./migrations/000001_init.up.sql:/docker-entrypoint-initdb.d/001_init.sql:ro
+
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U delivery -d delivery_service"]
       interval: 5s
       timeout: 3s
       retries: 20
 
+  delivery-service:
+    build: .
+    container_name: delivery-service
+
+    environment:
+
+      APP_ENV: development
+
+      SERVICE_NAME: delivery-service
+
+      GRPC_PORT: "50056"
+
+      METRICS_PORT: "9106"
+
+      POSTGRES_DSN: "postgres://delivery:delivery@delivery-db:5432/delivery_service?sslmode=disable"
+
+      REDIS_ADDR: "redis:6379"
+
+      REDIS_PASSWORD: ""
+      REDIS_DB: "0"
+      NATS_URL: "nats://nats:4222"
+      CACHE_TTL: "5m"
+      ETA_CACHE_TTL: "5m"
+      JWT_SECRET: "super-secret-key"
+      OTEL_ENABLED: "false"
+
+    depends_on:
+      delivery-db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      nats:
+        condition: service_started
+
+    ports:
+      - "50056:50056"
+      - "9106:9106"
+
   redis:
     image: redis:7-alpine
     container_name: delivery-redis
+
     ports:
       - "6386:6379"
 
   nats:
     image: nats:2.10-alpine
     container_name: delivery-nats
+
     command: ["-js", "-m", "8222"]
+
     ports:
       - "4226:4222"
       - "8226:8222"
