@@ -77,14 +77,14 @@ func Load() (*Config, error) {
 	)
 
 	// Redis
-	v.SetDefault("REDIS_ADDR", "localhost:6380")
+	v.SetDefault("REDIS_ADDR", "localhost:6379")
 	v.SetDefault("REDIS_PASSWORD", "")
 	v.SetDefault("REDIS_DB", 0)
 
 	// NATS
 	v.SetDefault(
 		"NATS_URL",
-		"nats://localhost:4223",
+		"nats://localhost:4222",
 	)
 
 	// Cache

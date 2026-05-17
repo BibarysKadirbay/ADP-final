@@ -1,0 +1,23 @@
+global:
+  scrape_interval: 5s
+
+scrape_configs:
+  - job_name: "order-service"
+    static_configs:
+      - targets: ["order-service:9101"]
+
+  - job_name: "user-service"
+    static_configs:
+      - targets: ["user-service:9102"]
+
+  - job_name: "payment-service"
+    static_configs:
+      - targets: ["payment-service:9103"]
+
+  - job_name: "restaurant-service"
+    static_configs:
+      - targets: ["restaurant-service:9105"]
+
+  - job_name: "delivery-service"
+    static_configs:
+      - targets: ["delivery-service:9106"]

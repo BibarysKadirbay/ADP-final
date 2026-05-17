@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package payment.v1;
+
+option go_package = "github.com/aitu/food-delivery/payment-service/internal/infrastructure/grpc/paymentpb;paymentpb";
+
+service PaymentService {
+  rpc GetPayment(GetPaymentRequest) returns (PaymentResponse);
+  rpc ListPaymentsByOrder(ListPaymentsByOrderRequest) returns (ListPaymentsResponse);
+}
+
+message GetPaymentRequest {
+  string payment_id = 1;
+}
+
+message ListPaymentsByOrderRequest {
+  string order_id = 1;
+}
+
+message Payment {
+  string id = 1;
+  string order_id = 2;
+  string user_id = 3;
+  int64 amount = 4;
+  string status = 5;
+  string method = 6;
+}
+
+message PaymentResponse {
+  Payment payment = 1;
+}
+
+message ListPaymentsResponse {
+  repeated Payment payments = 1;
+}

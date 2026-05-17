@@ -54,6 +54,29 @@ func (r *OrderRepository) Create(ctx context.Context, order *entities.Order) err
 	return err
 }
 
+func (r *OrderRepository) CreateInTx(ctx context.Context, order *entities.Order) error {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	query := `
+		INSERT INTO orders (
+			id, user_id, restaurant_id, delivery_id, total_price,
+			status, payment_status, address, comment, created_at
+		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+	`
+	if _, err := tx.Exec(ctx, query,
+		order.ID, order.UserID, order.RestaurantID, order.DeliveryID,
+		order.TotalPrice, order.Status, order.PaymentStatus,
+		order.Address, order.Comment, order.CreatedAt,
+	); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
 func (r *OrderRepository) GetByID(ctx context.Context, id string) (*entities.Order, error) {
 	query := `
 		SELECT 
@@ -145,6 +168,33 @@ func (r *OrderRepository) List(ctx context.Context) ([]entities.Order, error) {
 	}
 
 	return orders, nil
+}
+
+func (r *OrderRepository) ListByUser(ctx context.Context, userID string) ([]entities.Order, error) {
+	query := `
+		SELECT id, user_id, restaurant_id, delivery_id, total_price,
+			status, payment_status, address, comment, created_at
+		FROM orders WHERE user_id = $1 ORDER BY created_at DESC
+	`
+	rows, err := r.db.Query(ctx, query, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var orders []entities.Order
+	for rows.Next() {
+		var order entities.Order
+		if err := rows.Scan(
+			&order.ID, &order.UserID, &order.RestaurantID, &order.DeliveryID,
+			&order.TotalPrice, &order.Status, &order.PaymentStatus,
+			&order.Address, &order.Comment, &order.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		orders = append(orders, order)
+	}
+	return orders, rows.Err()
 }
 
 func (r *OrderRepository) UpdateStatus(

@@ -1,5 +1,3 @@
-// order-service/internal/infrastructure/nats/publisher.go
-
 package nats
 
 import (
@@ -10,35 +8,33 @@ import (
 
 type Publisher struct {
 	conn *nats.Conn
-}
-
-type OrderCreatedEvent struct {
-	OrderID string `json:"order_id"`
-	UserID  string `json:"user_id"`
-	Amount  int64  `json:"amount"`
+	js   nats.JetStreamContext
 }
 
 func NewPublisher(url string) (*Publisher, error) {
-
-	nc, err := nats.Connect(url)
+	conn, err := nats.Connect(url, nats.Name("order-service"))
 	if err != nil {
 		return nil, err
 	}
-
-	return &Publisher{
-		conn: nc,
-	}, nil
+	js, err := conn.JetStream()
+	if err != nil {
+		conn.Close()
+		return nil, err
+	}
+	_, _ = js.AddStream(&nats.StreamConfig{
+		Name:     "ORDER_EVENTS",
+		Subjects: []string{"order.>"},
+	})
+	return &Publisher{conn: conn, js: js}, nil
 }
 
-func (p *Publisher) Publish(
-	subject string,
-	data interface{},
-) error {
-	body, err := json.Marshal(data)
+func (p *Publisher) Publish(subject string, payload interface{}) error {
+	data, err := json.Marshal(payload)
 	if err != nil {
 		return err
 	}
-	return p.conn.Publish(subject, body)
+	_, err = p.js.Publish(subject, data)
+	return err
 }
 
 func (p *Publisher) Close() {

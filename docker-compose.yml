@@ -1,5 +1,3 @@
-version: '3.9'
-
 services:
 
   user-db:
@@ -7,10 +5,85 @@ services:
     container_name: user-db
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_PASSWORD: "0000"
       POSTGRES_DB: userdb
     ports:
+      - "5434:5432"
+    volumes:
+      - ./user-service/migrations/000001_init.up.sql:/docker-entrypoint-initdb.d/001_init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d userdb"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  order-db:
+    image: postgres:16
+    container_name: order-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: "0000"
+      POSTGRES_DB: orderdb
+    ports:
       - "5433:5432"
+    volumes:
+      - ./order-service/migrations/000001_init.up.sql:/docker-entrypoint-initdb.d/001_init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d orderdb"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  payment-db:
+    image: postgres:16
+    container_name: payment-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: "0000"
+      POSTGRES_DB: paymentdb
+    ports:
+      - "5437:5432"
+    volumes:
+      - ./payment-service/migrations/000001_init.up.sql:/docker-entrypoint-initdb.d/001_init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d paymentdb"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  restaurant-db:
+    image: postgres:16-alpine
+    container_name: restaurant-db
+    environment:
+      POSTGRES_DB: restaurant_service
+      POSTGRES_USER: restaurant
+      POSTGRES_PASSWORD: restaurant
+    ports:
+      - "5435:5432"
+    volumes:
+      - ./restaurant-service/migrations/000001_init.up.sql:/docker-entrypoint-initdb.d/001_init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U restaurant -d restaurant_service"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  delivery-db:
+    image: postgres:16-alpine
+    container_name: delivery-db
+    environment:
+      POSTGRES_DB: delivery_service
+      POSTGRES_USER: delivery
+      POSTGRES_PASSWORD: delivery
+    ports:
+      - "5436:5432"
+    volumes:
+      - ./delivery-service/migrations/000001_init.up.sql:/docker-entrypoint-initdb.d/001_init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U delivery -d delivery_service"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
 
   redis:
     image: redis:7
@@ -19,54 +92,150 @@ services:
       - "6379:6379"
 
   nats:
-    image: nats:latest
+    image: nats:2.10-alpine
     container_name: nats
+    command: ["-js", "-m", "8222"]
     ports:
       - "4222:4222"
+      - "8222:8222"
 
   user-service:
     build: ./user-service
     container_name: user-service
+    environment:
+      POSTGRES_DSN: postgres://postgres:0000@user-db:5432/userdb?sslmode=disable
+      REDIS_ADDR: redis:6379
+      NATS_URL: nats://nats:4222
+      JWT_SECRET: super-secret-key
     depends_on:
-      - user-db
-      - redis
-      - nats
+      user-db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      nats:
+        condition: service_started
+    ports:
+      - "50052:50052"
+      - "9102:9102"
+
+  order-service:
+    build: ./order-service
+    container_name: order-service
+    environment:
+      POSTGRES_DSN: postgres://postgres:0000@order-db:5432/orderdb?sslmode=disable
+      REDIS_ADDR: redis:6379
+      NATS_URL: nats://nats:4222
+    depends_on:
+      order-db:
+        condition: service_healthy
+      nats:
+        condition: service_started
     ports:
       - "50051:50051"
+      - "9101:9101"
+
+  payment-service:
+    build: ./payment-service
+    container_name: payment-service
+    environment:
+      POSTGRES_DSN: postgres://postgres:0000@payment-db:5432/paymentdb?sslmode=disable
+      NATS_URL: nats://nats:4222
+    depends_on:
+      payment-db:
+        condition: service_healthy
+      nats:
+        condition: service_started
+    ports:
+      - "50053:50053"
+      - "9103:9103"
+
+  restaurant-service:
+    build: ./restaurant-service
+    container_name: restaurant-service
+    environment:
+      POSTGRES_DSN: postgres://restaurant:restaurant@restaurant-db:5432/restaurant_service?sslmode=disable
+      REDIS_ADDR: redis:6379
+      NATS_URL: nats://nats:4222
+      JWT_SECRET: super-secret-key
+    depends_on:
+      restaurant-db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      nats:
+        condition: service_started
+    ports:
+      - "50055:50055"
+      - "9105:9105"
+
+  delivery-service:
+    build: ./delivery-service
+    container_name: delivery-service
+    environment:
+      POSTGRES_DSN: postgres://delivery:delivery@delivery-db:5432/delivery_service?sslmode=disable
+      REDIS_ADDR: redis:6379
+      NATS_URL: nats://nats:4222
+      RESTAURANT_GRPC_ADDR: restaurant-service:50055
+      JWT_SECRET: super-secret-key
+    depends_on:
+      delivery-db:
+        condition: service_healthy
+      nats:
+        condition: service_started
+      restaurant-service:
+        condition: service_started
+    ports:
+      - "50056:50056"
+      - "9106:9106"
+
+  email-service:
+    build: ./email-service
+    container_name: email-service
+    environment:
+      NATS_URL: nats://nats:4222
+      SMTP_HOST: smtp.gmail.com
+      SMTP_PORT: "587"
+      SMTP_EMAIL: ${SMTP_EMAIL:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+    depends_on:
+      nats:
+        condition: service_started
 
   api-gateway:
     build: ./api-gateway
     container_name: api-gateway
+    environment:
+      USER_GRPC_ADDR: user-service:50052
+      ORDER_GRPC_ADDR: order-service:50051
+      RESTAURANT_GRPC_ADDR: restaurant-service:50055
+      JWT_SECRET: super-secret-key
     depends_on:
       - user-service
+      - order-service
+      - restaurant-service
     ports:
       - "8080:8080"
 
   prometheus:
-    image: prom/prometheus
+    image: prom/prometheus:latest
     container_name: prometheus
     ports:
       - "9090:9090"
+    volumes:
+      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
 
   grafana:
-    image: grafana/grafana
+    image: grafana/grafana:latest
     container_name: grafana
     ports:
-      - "3000:3000"
-  order-db:
-    image: postgres:16
-    container_name: order-db
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: orderdb
-    ports:
-      - "5434:5432"
-  order-service:
-    build: ./order-service
-    container_name: order-service
+      - "3001:3000"
     depends_on:
-      - order-db
-      - nats
+      - prometheus
+
+  frontend:
+    build: ./frontend
+    container_name: frontend
     ports:
-      - "50052:50052"
+      - "3000:80"
+    depends_on:
+      - api-gateway

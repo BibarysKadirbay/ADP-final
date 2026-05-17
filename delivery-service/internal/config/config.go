@@ -49,6 +49,10 @@ func Load() (*Config, error) {
 	v.SetDefault("SERVICE_NAME", "delivery-service")
 	v.SetDefault("GRPC_PORT", "50056")
 	v.SetDefault("METRICS_PORT", "9106")
+	v.SetDefault(
+		"POSTGRES_DSN",
+		"postgres://delivery:delivery@delivery-db:5432/delivery_service?sslmode=disable",
+	)
 	v.SetDefault("CACHE_TTL", "5m")
 	v.SetDefault("ETA_CACHE_TTL", "2m")
 	v.SetDefault("REDIS_ADDR", "localhost:6379")
