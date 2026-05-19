@@ -4,11 +4,13 @@ import (
 	"log"
 
 	"api-gateway/internal/config"
-	"api-gateway/internal/handlers"
-	"api-gateway/internal/middleware"
+	deliverypb "api-gateway/internal/grpc/deliverypb"
 	orderpb "api-gateway/internal/grpc/orderpb"
+	paymentpb "api-gateway/internal/grpc/paymentpb"
 	restaurantpb "api-gateway/internal/grpc/restaurantpb"
 	userpb "api-gateway/internal/grpc/userpb"
+	"api-gateway/internal/handlers"
+	"api-gateway/internal/middleware"
 
 	"github.com/gin-gonic/gin"
 	"google.golang.org/grpc"
@@ -24,10 +26,16 @@ func main() {
 	defer orderConn.Close()
 	restaurantConn := dial(cfg.RestaurantGRPCAddr)
 	defer restaurantConn.Close()
+	paymentConn := dial(cfg.PaymentGRPCAddr)
+	defer paymentConn.Close()
+	deliveryConn := dial(cfg.DeliveryGRPCAddr)
+	defer deliveryConn.Close()
 
 	authHandler := handlers.NewAuthHandler(userpb.NewUserServiceClient(userConn))
 	restaurantHandler := handlers.NewRestaurantHandler(restaurantpb.NewRestaurantServiceClient(restaurantConn))
 	orderHandler := handlers.NewOrderHandler(orderpb.NewOrderServiceClient(orderConn))
+	paymentHandler := handlers.NewPaymentHandler(paymentpb.NewPaymentServiceClient(paymentConn))
+	deliveryHandler := handlers.NewDeliveryHandler(deliverypb.NewDeliveryServiceClient(deliveryConn))
 
 	r := gin.Default()
 	r.Use(corsMiddleware())
@@ -54,6 +62,15 @@ func main() {
 	r.GET("/users/:id", authHandler.GetUser)
 	r.PATCH("/orders/:id/status", middleware.JWTAuth(cfg.JWTSecret), orderHandler.UpdateStatus)
 	r.PATCH("/orders/:id/cancel", middleware.JWTAuth(cfg.JWTSecret), orderHandler.CancelOrder)
+
+	// Payments
+	r.GET("/payments/:id", paymentHandler.GetPayment)
+	r.GET("/orders/:id/payments", paymentHandler.GetOrderPayments)
+
+	// Deliveries
+	r.GET("/deliveries/:id", deliveryHandler.GetDelivery)
+	r.GET("/orders/:id/deliveries", deliveryHandler.GetOrderDeliveries)
+	r.PATCH("/deliveries/:id/status", middleware.JWTAuth(cfg.JWTSecret), deliveryHandler.UpdateStatus)
 
 	log.Println("api-gateway listening on :" + cfg.HTTPPort)
 	if err := r.Run(":" + cfg.HTTPPort); err != nil {

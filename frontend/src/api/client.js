@@ -1,5 +1,18 @@
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
+function toCamelKey(key) {
+  return key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+}
+
+function camelize(value) {
+  if (Array.isArray(value)) return value.map(camelize);
+  if (!value || typeof value !== 'object') return value;
+
+  return Object.fromEntries(
+    Object.entries(value).map(([key, item]) => [toCamelKey(key), camelize(item)])
+  );
+}
+
 function headers() {
   const h = { 'Content-Type': 'application/json' };
   const token = localStorage.getItem('token');
@@ -14,7 +27,7 @@ async function request(path, options = {}) {
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || res.statusText);
-  return data;
+  return camelize(data);
 }
 
 export const api = {

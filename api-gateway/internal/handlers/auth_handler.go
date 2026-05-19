@@ -8,6 +8,8 @@ import (
 	userpb "api-gateway/internal/grpc/userpb"
 
 	"github.com/gin-gonic/gin"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 // AuthHandler — Team Member 1: user auth & profile routes.
@@ -21,11 +23,11 @@ func NewAuthHandler(users userpb.UserServiceClient) *AuthHandler {
 
 func (h *AuthHandler) Register(c *gin.Context) {
 	var body struct {
-		Name     string `json:"name"`
-		Email    string `json:"email"`
-		Password string `json:"password"`
+		Name     string `json:"name" binding:"required"`
+		Email    string `json:"email" binding:"required,email"`
+		Password string `json:"password" binding:"required"`
 		Phone    string `json:"phone"`
-		Address  string `json:"address"`
+		Address  string `json:"address" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&body); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -38,7 +40,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		Phone: body.Phone, Address: body.Address,
 	})
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		writeGRPCError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, res)
@@ -46,8 +48,8 @@ func (h *AuthHandler) Register(c *gin.Context) {
 
 func (h *AuthHandler) Login(c *gin.Context) {
 	var body struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
+		Email    string `json:"email" binding:"required,email"`
+		Password string `json:"password" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&body); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -59,7 +61,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		Email: body.Email, Password: body.Password,
 	})
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		writeGRPCError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, res)
@@ -74,4 +76,22 @@ func (h *AuthHandler) GetUser(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, res)
+}
+
+func writeGRPCError(c *gin.Context, err error) {
+	code := status.Code(err)
+	httpStatus := http.StatusInternalServerError
+
+	switch code {
+	case codes.AlreadyExists:
+		httpStatus = http.StatusConflict
+	case codes.Unauthenticated:
+		httpStatus = http.StatusUnauthorized
+	case codes.NotFound:
+		httpStatus = http.StatusNotFound
+	case codes.InvalidArgument:
+		httpStatus = http.StatusBadRequest
+	}
+
+	c.JSON(httpStatus, gin.H{"error": status.Convert(err).Message()})
 }
