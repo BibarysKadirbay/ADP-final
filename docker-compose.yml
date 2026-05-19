@@ -208,11 +208,15 @@ services:
       USER_GRPC_ADDR: user-service:50052
       ORDER_GRPC_ADDR: order-service:50051
       RESTAURANT_GRPC_ADDR: restaurant-service:50055
+      PAYMENT_GRPC_ADDR: payment-service:50053
+      DELIVERY_GRPC_ADDR: delivery-service:50056
       JWT_SECRET: super-secret-key
     depends_on:
       - user-service
       - order-service
       - restaurant-service
+      - payment-service
+      - delivery-service
     ports:
       - "8080:8080"
 

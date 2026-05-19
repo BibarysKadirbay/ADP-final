@@ -47,6 +47,13 @@ docker compose up --build -d
 - `POST /orders`, `GET /orders/:id`, `GET /users/:id/orders`
 - `PATCH /orders/:id/status`, `PATCH /orders/:id/cancel`
 
+**Payments** - `api-gateway/internal/handlers/payment_handler.go`
+- `GET /payments/:id`, `GET /orders/:id/payments`
+
+**Deliveries** - `api-gateway/internal/handlers/delivery_handler.go`
+- `GET /deliveries/:id`, `GET /orders/:id/deliveries`
+- `PATCH /deliveries/:id/status`
+
 ## Requirements checklist
 
 | Requirement | Weight | Status | Where implemented |
